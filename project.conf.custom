@@ -1,0 +1,7 @@
+<VirtualHost *:80>
+        ServerAdmin root@localhost
+        DocumentRoot /var/www/html
+        ServerName setup.local
+        ErrorLog /var/www/error_setup.local
+        CustomLog /var/www/access_setup.local common
+</VirtualHost>

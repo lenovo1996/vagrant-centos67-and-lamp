@@ -1,0 +1,93 @@
+- hosts: localhost
+  sudo: yes
+  vars:
+
+    project_name: centos67-and-lamp
+    server_name: setup.local
+
+    new_user_account: appdept
+    new_user_password: $1$tekitoun$YRWdgNz.fxwRqiHW7R36T/ # openssl passwd -salt tekitouna_salt -1 0000 で作成
+
+    db_name: "database_name"
+    db_user: www
+    db_pass: ""
+
+  tasks:
+#    - name: yum update
+#      yum: name=* state=latest
+
+    - name: add user
+      user: name={{new_user_account}} password={{new_user_password}} state=present
+
+    - name: disable iptables
+      service: name=iptables state=stopped enabled=no
+
+    - name: remove localtime
+      file: path=/etc/localtime state=absent
+
+    - name: change timezone
+      file: src=/usr/share/zoneinfo/Asia/Ho_Chi_Minh dest=/etc/localtime state=link force=yes mode=0644
+
+    - name: change locale
+      command: sed -i "s/en_US/vi_VN/g" /etc/sysconfig/i18n
+
+    - name: install remi repository
+      command: rpm -Uvh --force http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
+
+    - name: install apache
+      yum: name=httpd state=latest
+
+    - name: install gd-last
+      yum: name=gd-last enablerepo=remi state=latest
+
+    - name: install php
+      yum: name={{item}} enablerepo=remi-php56 state=present
+      with_items:
+        - php
+        - php-common
+        - php-pdo
+        - php-gmp
+        - php-cli
+        - php-devel
+        - php-mysqlnd
+        - php-mbstring
+        - php-gd
+        - php-intl
+        - php-xml
+        - libmcrypt
+        - libmcrypt-devel
+        - php-mcrypt
+      notify:
+        - restart apache
+
+
+
+    - name: install mysql
+      yum: name={{item}} enablerepo=remi,epel state=present
+      with_items:
+          - mysql-server
+          - MySQL-python
+
+    - name: start mysql and enabled
+      service: name=mysqld state=started enabled=yes
+
+    - name: create database
+      mysql_db: name={{db_name}} state=present
+
+    - name: add mysqls user
+      mysql_user: name={{db_user}} password={{db_pass}} priv={{db_name}}.*:ALL state=present
+
+    - name: copy project.conf.custom
+      copy: src=project.conf.custom dest=/etc/httpd/conf.d/project.conf backup=yes
+      notify:
+        - restart apache
+
+    - name: replace http.conf
+      replace: dest=/etc/httpd/conf/httpd.conf regexp='^#NameVirtualHost' replace='NameVirtualHost' backup=yes
+
+    - name: start apache and enabled
+      service: name=httpd state=started enabled=yes
+
+  handlers:
+    - name: restart apache
+      service: name=httpd state=restarted
