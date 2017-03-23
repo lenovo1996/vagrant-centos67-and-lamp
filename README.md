@@ -6,3 +6,4 @@
 - 162.168.33.10
 # edit hosts:
 - 192.168.33.10 setup.local
+goto http://setup.local/phpinfo.php to view php info
